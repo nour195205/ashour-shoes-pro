@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<section class="product-details-section">
+    <div class="product-image">
+        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+    </div>
+    <div class="product-details">
+        <h2>{{ product.name }}</h2>
+        <p class="price">{{ product.price }} جنيه</p>
+        <p class="description">
+            {{ product.description }}
+        </p>
+        <div class="size-selection">
+            <label for="size">اختر المقاس:</label>
+            <select id="size" name="size">
+                <option value="" disabled selected>اختر مقاس</option>
+                <option value="38">38</option>
+                <option value="39">39</option>
+                <option value="40">40</option>
+                <option value="41">41</option>
+                <option value="42">42</option>
+                <option value="43">43</option>
+            </select>
+        </div>
+        {% if user.is_authenticated %}
+            <button id="add-to-cart-btn" data-product-id="{{ product.id }}">Add to Cart</button>
+        {% else %}
+            <p>برجاء <a href="{% url 'login' %}">تسجيل الدخول</a> لإضافة المنتج إلى السلة.</p>
+        {% endif %}
+    </div>
+</section>
+
+{% if user.is_authenticated %}
+<script>
+    document.getElementById('add-to-cart-btn').addEventListener('click', () => {
+        const productId = document.getElementById('add-to-cart-btn').getAttribute('data-product-id');
+        const size = document.getElementById('size').value;
+
+        // التحقق من اختيار المقاس
+        if (!size) {
+            alert('برجاء اختيار المقاس.');
+            return;
+        }
+
+        // إرسال طلب Ajax لإضافة المنتج للسلة
+        fetch("{% url 'add_to_cart' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'  // ضروري للـ POST في Django
+            },
+            body: new URLSearchParams({
+                'product_id': productId,
+                'quantity': 1,
+                'size': size
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                // تحديث عدد المنتجات في السلة في الـ Header
+                document.getElementById('cart-count').textContent = data.cart_count;
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ أثناء إضافة المنتج إلى السلة.');
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

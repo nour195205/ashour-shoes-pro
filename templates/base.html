@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ashour Shoes - {% block title %}{% endblock %}</title>
+</head>
+{% load static %}
+
+<!-- استخدم هذا في القالب مع إضافة version لتجنب الكاش -->
+<link rel="stylesheet" href="{% static 'css/styles.css' %}?v={% now 'U' %}">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+<body>
+    <!-- استدعاء الـ Header -->
+    {% include 'parts/header.html' %}
+
+    <!-- المكان اللي هيتغير حسب الصفحة -->
+    {% block content %}
+    {% endblock %}
+
+    <!-- استدعاء الـ Footer -->
+    {% include 'parts/footer.html' %}
+</body>
+</html>

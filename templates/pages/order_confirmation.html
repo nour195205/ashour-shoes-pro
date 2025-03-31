@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}تأكيد الطلب{% endblock %}
+
+{% block content %}
+
+<section class="confirmation-section">
+    <h2>تم إتمام الطلب بنجاح!</h2>
+    <p>شكرًا لتسوقك مع Ashour Shoes! تم استلام طلبك بنجاح.</p>
+    <div class="order-card">
+        <h3>طلب رقم: {{ order.id }}</h3>
+        <p>التاريخ: {{ order.created_at }}</p>
+        <p>الحالة: {{ order.status }}</p>
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الصورة</th>
+                    <th>المقاس</th>
+                    <th>السعر</th>
+                    <th>الكمية</th>
+                    <th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td><img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" style="width: 50px; height: 50px;"></td>
+                    <td>{{ item.size }}</td>
+                    <td>{{ item.price }} جنيه</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.get_total_price }} جنيه</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="order-total">الإجمالي: {{ order.total_price }} جنيه</p>
+    </div>
+    <a href="{% url 'orders' %}"><button>عرض الطلبات</button></a>
+    <a href="{% url 'products' %}"><button>متابعة التسوق</button></a>
+</section>
+
+<!-- إضافة مكتبة EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>
+    // تهيئة EmailJS بالـ Public Key
+    (function(){
+        emailjs.init("YxSLaNpb8bmFR-uoS"); // الـ Public Key
+    })();
+
+    // بيانات الطلب من الـ View
+    const orderData = JSON.parse('{{ order_data_json|escapejs }}');
+
+    // إرسال الإيميل لصاحب المحل باستخدام EmailJS
+    window.onload = function() {
+        const templateParams = {
+            to_email: 'ashournour36@gmail.com', // الإيميل بتاعك
+            user_name: orderData.user_name,
+            user_email: orderData.user_email,
+            order_id: orderData.order_id,
+            order_date: orderData.order_date,
+            order_status: orderData.order_status,
+            order_total: orderData.order_total,
+            order_items: orderData.order_items,
+            
+
+        };
+        console.log(templateParams);
+
+        emailjs.send('service_ql09hke', 'template_qqes07k', templateParams)
+    .then(function(response) {
+        console.log('تم إرسال الإيميل بنجاح!', response.status, response.text);
+    })
+    .catch(function(error) { // استخدم catch لالتقاط الأخطاء
+        console.log('فشل في إرسال الإيميل:', error);
+    });
+
+    };
+</script>
+{% endblock %}
