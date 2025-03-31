@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}contact us{% endblock %}
+{% load static %}
+{% block content %}
+
+<div id="ContactCon" class="disappear">
+    <a href="tel:+01203661364" target="_blank"><img src="{% static 'img/phone.png' %}" alt="phone"
+            style="width: 10%; border-radius: 50%;"></a>
+    <a href="https://www.facebook.com/profile.php?id=61557162630280&mibextid=ZbWKwL" target="_blank"><img
+            src="{% static 'img/face.png' %}" style="width: 10%; border-radius: 50%;" alt="facebook"></a>
+    <a href="https://wa.me/message/WP2OSZA2GXKEI1" target="_blank"><img src="{% static 'img/whats.png' %}"
+            style="width: 10%; border-radius: 50%;" alt="WhatsApp"></a>
+    <br>
+</div>
+
+{% endblock content %}
