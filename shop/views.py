@@ -168,3 +168,58 @@ def checkout(request):
 def view_orders(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'pages/orders.html', {'orders': orders})
+
+
+from django.core.files.storage import FileSystemStorage
+import json
+
+@login_required
+def custom_order(request):
+    return render(request, 'pages/custom_order.html')
+
+@login_required
+def submit_custom_order(request):
+    if request.method == 'POST':
+        # استخراج البيانات من الفورم
+        right_length = request.POST.get('right_length')
+        right_width = request.POST.get('right_width')
+        right_circumference = request.POST.get('right_circumference')
+        left_length = request.POST.get('left_length')
+        left_width = request.POST.get('left_width')
+        left_circumference = request.POST.get('left_circumference')
+        shoe_type = request.POST.get('shoe_type')
+        notes = request.POST.get('notes')
+
+        # تحضير بيانات الطلب للإيميل
+        custom_order_data = {
+            'user_name': request.user.username,
+            'user_email': request.user.email,
+            'right_length': right_length,
+            'right_width': right_width,
+            'right_circumference': right_circumference,
+            'left_length': left_length,
+            'left_width': left_width,
+            'left_circumference': left_circumference,
+            'shoe_type': shoe_type,
+            'notes': notes,
+        }
+
+        # التعامل مع الصور المرفوعة (اختياري)
+        images = request.FILES.getlist('foot_images')
+        image_urls = []
+        if images:
+            fs = FileSystemStorage()
+            for image in images:
+                filename = fs.save(f'custom_orders/{image.name}', image)
+                image_urls.append(fs.url(filename))
+
+        # تحويل البيانات لـ JSON string للإيميل
+        custom_order_data['image_urls'] = image_urls
+        custom_order_data_json = json.dumps(custom_order_data)
+
+        # إرسال الإيميل لصاحب المحل (نفس الطريقة اللي استخدمناها قبل كده)
+        return render(request, 'pages/custom_order_confirmation.html', {
+            'custom_order_data_json': custom_order_data_json
+        })
+
+    return redirect('custom_order')

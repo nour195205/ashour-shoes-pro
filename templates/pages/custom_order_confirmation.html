@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}تأكيد طلب الجزمة المخصصة{% endblock %}
+
+{% block content %}
+<section class="confirmation-section">
+    <h2>تم إرسال طلبك بنجاح!</h2>
+    <p>شكرًا لاختيارك Ashour Shoes! سيتم مراجعة طلبك وسنتواصل معك قريبًا.</p>
+    <a href="{% url 'products' %}" ><button id="add-to-cart-btn">متابعة التسوق</button></a>
+</section>
+
+<!-- إضافة مكتبة EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>
+    // تهيئة EmailJS بالـ Public Key
+    (function(){
+        emailjs.init("YxSLaNpb8bmFR-uoS"); // الـ Public Key
+    })();
+
+    // بيانات الطلب من الـ View
+    const customOrderData = JSON.parse('{{ custom_order_data_json|escapejs }}');
+
+    // إرسال الإيميل لصاحب المحل باستخدام EmailJS
+    window.onload = function() {
+        const templateParams = {
+            to_email: 'ashournour36@gmail.com', // الإيميل بتاعك
+            user_name: customOrderData.user_name,
+            user_email: customOrderData.user_email,
+            right_length: customOrderData.right_length,
+            right_width: customOrderData.right_width,
+            right_circumference: customOrderData.right_circumference,
+            left_length: customOrderData.left_length,
+            left_width: customOrderData.left_width,
+            left_circumference: customOrderData.left_circumference,
+            shoe_type: customOrderData.shoe_type,
+            notes: customOrderData.notes,
+            image_urls: customOrderData.image_urls.join(', '), // روابط الصور
+        };
+
+        // التأكد من إن to_email مش فاضي
+        if (!templateParams.to_email) {
+            console.error('خطأ: to_email فاضي');
+            return;
+        }
+
+        emailjs.send('service_ql09hke', 'template_rbat18r', templateParams)
+            .then(function(response) {
+                console.log('تم إرسال الإيميل بنجاح!', response.status, response.text);
+            }, function(error) {
+                console.log('فشل في إرسال الإيميل:', error);
+            });
+    };
+</script>
+{% endblock %}
