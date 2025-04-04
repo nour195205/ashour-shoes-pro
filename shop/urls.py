@@ -15,4 +15,5 @@ urlpatterns = [
     path('orders/', views.view_orders, name='orders'),
     path('custom-order/', views.custom_order, name='custom_order'),  # رابط صفحة الطلب
     path('submit-custom-order/', views.submit_custom_order, name='submit_custom_order'),  # رابط إرسال الطلب
+    path('customer-service/', views.customer_service, name='customer_service'),
 ]
