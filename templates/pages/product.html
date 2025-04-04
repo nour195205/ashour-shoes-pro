@@ -9,6 +9,9 @@
     </div>
     <div class="product-details">
         <h2>{{ product.name }}</h2>
+        {% if product.price1 != None %}
+        <p class="price" style="text-decoration:line-through; color: brown;">{{ product.price1 }} جنيه</p>
+        {% endif %}
         <p class="price">{{ product.price }} جنيه</p>
         <p class="description">
             {{ product.description }}
@@ -17,12 +20,16 @@
             <label for="size">اختر المقاس:</label>
             <select id="size" name="size">
                 <option value="" disabled selected>اختر مقاس</option>
+                <option value="36">36</option>
+                <option value="37">37</option>
                 <option value="38">38</option>
                 <option value="39">39</option>
                 <option value="40">40</option>
                 <option value="41">41</option>
                 <option value="42">42</option>
                 <option value="43">43</option>
+                <option value="44">44</option>
+                <option value="45">45</option>
             </select>
         </div>
         {% if user.is_authenticated %}

@@ -4,7 +4,7 @@
 <nav>
     <a href="{% url 'products' %}">Products</a>
     <a href="{% url 'contact_us' %}">Contact Us</a>
-    <a href="{% url 'customer_service' %}">Customer Service</a>  
+    
     {% if user.is_authenticated %}
         <a href="{% url 'orders' %}">My Orders</a>
         <a href="{% url 'custom_order' %}">Order Custom Shoes</a>
