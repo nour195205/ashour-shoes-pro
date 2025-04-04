@@ -1,0 +1,12 @@
+{% for ticket in tickets %}
+<div class="ticket">
+    <p><strong>العميل:</strong> {{ ticket.user.username }}</p>
+    <p>{{ ticket.question }}</p>
+    
+    <form method="post" action="{% url 'add_response' ticket.id %}">
+        {% csrf_token %}
+        <textarea name="response" required></textarea>
+        <button type="submit">إرسال الرد</button>
+    </form>
+</div>
+{% endfor %}

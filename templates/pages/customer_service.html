@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}خدمة العملاء{% endblock %}
+
+{% block content %}
+<section class="customer-service-section">
+    <h2>خدمة العملاء</h2>
+    <p>اسأل أي سؤال عن المنتجات أو الطلبات، وفريق الدعم هيرد عليك فورًا!</p>
+
+    <!-- فورم إرسال السؤال -->
+    <form method="POST" action="{% url 'customer_service' %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="question">سؤالك:</label>
+            <textarea name="question" id="question" rows="4" required placeholder="اكتب سؤالك هنا..."></textarea>
+        </div>
+        <button type="submit">إرسال السؤال</button>
+    </form>
+
+    <!-- عرض الرد لو موجود -->
+    {% if response %}
+        <div class="response">
+            <h3>رد فريق الدعم:</h3>
+            <p>{{ response }}</p>
+        </div>
+    {% endif %}
+</section>
+
+<style>
+    .customer-service-section {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: right;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .form-group textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #45a049;
+    }
+    .response {
+        margin-top: 20px;
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
