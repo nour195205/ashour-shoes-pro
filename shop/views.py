@@ -88,7 +88,7 @@ def add_to_cart(request):
         )
 
         if not created:
-            cart_item.quantity += quantity
+            cart_item.quantity += quantity  
             cart_item.save()
 
         cart_count = cart.items.aggregate(total=models.Sum('quantity'))['total'] or 0
