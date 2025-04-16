@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}إتمام الطلب{% endblock %}
+
+{% block content %}
+<style>
+    .checkout-section {
+        max-width: 800px;
+        margin: 50px auto;
+        background: #fff;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .checkout-section h2 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #1e272e;
+    }
+
+    .checkout-section table {
+        width: 100%;
+        margin-bottom: 20px;
+        border-collapse: collapse;
+    }
+
+    .checkout-section th, .checkout-section td {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .checkout-section label {
+        display: block;
+        margin: 15px 0 5px;
+        font-weight: bold;
+    }
+
+    .checkout-section button {
+        background: linear-gradient(90deg, #00b894, #00cec9);
+        color: white;
+        padding: 12px 25px;
+        border: none;
+        border-radius: 25px;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: block;
+        margin: 30px auto 0;
+        transition: 0.3s;
+    }
+
+    .checkout-section button:hover {
+        transform: scale(1.05);
+    }
+</style>
+
+<section class="checkout-section">
+    <h2>مراجعة الطلب</h2>
+
+    {% if cart_items %}
+        <table>
+            <thead>
+                <tr>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>الحجم</th>
+                    <th>السعر</th>
+                    <th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cart_items %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.size }}</td>
+                    <td>{{ item.product.price }} جنيه</td>
+                    <td>{{ item.get_total_price }} جنيه</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h3 style="text-align: right;">الإجمالي الكلي: {{ total }} جنيه</h3>
+
+        <form method="post" action="{% url 'checkout' %}">
+            {% csrf_token %}
+            <label>اختر طريقة الدفع:</label>
+            <label><input type="radio" name="payment_method" value="cash" checked> الدفع عند الاستلام</label>
+            <label><input type="radio" name="payment_method" value="online"> دفع إلكتروني</label>
+
+            <button type="submit">إتمام الطلب</button>
+        </form>
+    {% else %}
+        <p>السلة فارغة. <a href="{% url 'products' %}">العودة للتسوق</a></p>
+    {% endif %}
+</section>
+{% endblock %}

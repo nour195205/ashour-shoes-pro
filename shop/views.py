@@ -112,57 +112,90 @@ def view_cart(request):
         'total_price': total_price
     })
 
+# @login_required
+# def checkout(request):
+#     cart, created = Cart.objects.get_or_create(user=request.user)
+#     cart_items = cart.items.all()
+
+#     if not cart_items:
+#         messages.error(request, 'السلة فارغة. لا يمكن إتمام الشراء.')
+#         return redirect('view_cart')
+
+#     total_price = sum(item.get_total_price() for item in cart_items)
+#     order = Order.objects.create(
+#         user=request.user,
+#         total_price=total_price,
+#         status='Pending'
+#     )
+
+#     for item in cart_items:
+#         OrderItem.objects.create(
+#             order=order,
+#             product=item.product,
+#             quantity=item.quantity,
+#             size=item.size,
+#             price=item.product.price
+#         )
+
+#     # تحضير بيانات الطلب للإرسال بالإيميل
+#     items_text = "\n".join([
+#         f"- {item.product.name} (المقاس: {item.size}) - الكمية: {item.quantity} - السعر: {float(item.price)} جنيه"
+#         for item in order.items.all()
+#     ])
+#     order_data = {
+#         'order_id': order.id,
+#         'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+#         'order_status': order.status,
+#         'order_total': float(order.total_price),  # تحويل Decimal إلى float
+#         'order_items': items_text,
+#         'user_name': request.user.username,
+#         'user_email': request.user.email,
+#     }
+
+#     # تحويل order_data إلى JSON string
+#     order_data_json = json.dumps(order_data)
+
+#     # تفريغ السلة بعد إتمام الشراء
+#     cart.items.all().delete()
+
+#     # توجيه المستخدم لصفحة التأكيد مع بيانات الطلب
+#     return render(request, 'pages/order_confirmation.html', {
+#         'order': order,
+#         'order_data_json': order_data_json  # نمرر order_data كـ JSON string
+#     })
+
+
 @login_required
 def checkout(request):
-    cart, created = Cart.objects.get_or_create(user=request.user)
+    cart = get_object_or_404(Cart, user=request.user)
     cart_items = cart.items.all()
+    total = sum(item.get_total_price() for item in cart_items)
 
-    if not cart_items:
-        messages.error(request, 'السلة فارغة. لا يمكن إتمام الشراء.')
-        return redirect('view_cart')
+    if request.method == 'POST':
+        payment_method = request.POST.get('payment_method', 'cash')
 
-    total_price = sum(item.get_total_price() for item in cart_items)
-    order = Order.objects.create(
-        user=request.user,
-        total_price=total_price,
-        status='Pending'
-    )
-
-    for item in cart_items:
-        OrderItem.objects.create(
-            order=order,
-            product=item.product,
-            quantity=item.quantity,
-            size=item.size,
-            price=item.product.price
+        order = Order.objects.create(
+            user=request.user,
+            total_price=total,
+            payment_method=payment_method
         )
 
-    # تحضير بيانات الطلب للإرسال بالإيميل
-    items_text = "\n".join([
-        f"- {item.product.name} (المقاس: {item.size}) - الكمية: {item.quantity} - السعر: {float(item.price)} جنيه"
-        for item in order.items.all()
-    ])
-    order_data = {
-        'order_id': order.id,
-        'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-        'order_status': order.status,
-        'order_total': float(order.total_price),  # تحويل Decimal إلى float
-        'order_items': items_text,
-        'user_name': request.user.username,
-        'user_email': request.user.email,
-    }
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                size=item.size,
+                price=item.product.price
+            )
 
-    # تحويل order_data إلى JSON string
-    order_data_json = json.dumps(order_data)
+        cart.items.all().delete()
 
-    # تفريغ السلة بعد إتمام الشراء
-    cart.items.all().delete()
+        return redirect('orders')  # أو صفحة "تم الطلب بنجاح"
 
-    # توجيه المستخدم لصفحة التأكيد مع بيانات الطلب
-    return render(request, 'pages/order_confirmation.html', {
-        'order': order,
-        'order_data_json': order_data_json  # نمرر order_data كـ JSON string
-    })
+    return render(request, 'pages/checkout.html', {'cart_items': cart_items, 'total': total})
+
+
 
 @login_required
 def view_orders(request):
@@ -383,3 +416,13 @@ def customer_service(request):
                 """
 
     return render(request, 'pages/customer_service.html', {'response': response})
+
+
+@login_required
+def remove_from_cart(request, cart_item_id):
+    try:
+        cart_item = CartItem.objects.get(id=cart_item_id, cart__user=request.user)
+        cart_item.delete()
+        return JsonResponse({'success': True, 'message': 'تم إزالة العنصر من العربة!'})
+    except CartItem.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'العنصر غير موجود في العربة.'})
