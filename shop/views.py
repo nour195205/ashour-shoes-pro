@@ -145,8 +145,14 @@ def view_cart(request):
 
 
 import requests
-from django.conf import settings
+import os
+from dotenv import load_dotenv
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from .models import Cart, Order, OrderItem
 
+load_dotenv()  # تحميل المتغيرات من ملف .env
 
 @login_required
 def checkout(request):
@@ -184,10 +190,10 @@ def checkout(request):
                 print(f"Starting Paymob payment for order {order.id}")
                 print(f"User: {request.user.username}, Email: {request.user.email}, Total: {total}")
 
-                # الخطوة 1: الحصول على توكن التوثيق
+                # 1- الحصول على التوكن
                 auth_response = requests.post(
                     'https://accept.paymob.com/api/auth/tokens',
-                    json={'api_key': settings.PAYMOB_API_KEY}
+                    json={'api_key': os.getenv("PAYMOB_API_KEY")}
                 )
                 if auth_response.status_code not in [200, 201]:
                     error_msg = f"فشل التوثيق: {auth_response.status_code} - {auth_response.text}"
@@ -196,10 +202,11 @@ def checkout(request):
                     order.payment_status = 'Failed'
                     order.save()
                     return redirect('view_cart')
+
                 token = auth_response.json()['token']
                 print(f"Auth Token: {token}")
 
-                # الخطوة 2: إنشاء طلب Paymob
+                # 2- إنشاء الطلب
                 order_data = {
                     'auth_token': token,
                     'delivery_needed': False,
@@ -208,14 +215,14 @@ def checkout(request):
                     'merchant_order_id': str(order.id),
                     'items': [
                         {
-                            'name': item.product.name[:60].encode('utf-8').decode('utf-8', 'ignore'),
+                            'name': item.product.name[:60],
                             'amount_cents': int(item.product.price * 100),
                             'description': f'Size: {item.size}',
                             'quantity': item.quantity
                         } for item in cart_items
                     ]
                 }
-                print(f"Order Data: {order_data}")
+
                 order_response = requests.post(
                     'https://accept.paymob.com/api/ecommerce/orders',
                     json=order_data
@@ -227,10 +234,11 @@ def checkout(request):
                     order.payment_status = 'Failed'
                     order.save()
                     return redirect('view_cart')
+
                 paymob_order_id = order_response.json()['id']
                 print(f"Paymob Order ID: {paymob_order_id}")
 
-                # الخطوة 3: إنشاء مفتاح الدفع
+                # 3- إنشاء مفتاح الدفع
                 payment_key_data = {
                     'auth_token': token,
                     'amount_cents': int(total * 100),
@@ -238,7 +246,7 @@ def checkout(request):
                     'order_id': paymob_order_id,
                     'billing_data': {
                         'email': request.user.email or 'test@example.com',
-                        'first_name': request.user.username[:60].encode('utf-8').decode('utf-8', 'ignore') or 'User',
+                        'first_name': request.user.username[:60] or 'User',
                         'last_name': last_name,
                         'phone_number': phone_number,
                         'street': 'NA',
@@ -250,20 +258,21 @@ def checkout(request):
                         'state': 'NA'
                     },
                     'currency': 'EGP',
-                    'integration_id': settings.PAYMOB_INTEGRATION_ID
+                    'integration_id': int(os.getenv("PAYMOB_INTEGRATION_ID"))
                 }
-                print(f"Payment Key Data: {payment_key_data}")
+
                 payment_key_response = requests.post(
                     'https://accept.paymob.com/api/acceptance/payment_keys',
                     json=payment_key_data
                 )
-                if payment_key_response.status_code not in [200, 201]:  # نقبل 200 أو 201
+                if payment_key_response.status_code not in [200, 201]:
                     error_msg = f"فشل إنشاء مفتاح الدفع: {payment_key_response.status_code} - {payment_key_response.text}"
                     print(error_msg)
                     messages.error(request, error_msg)
                     order.payment_status = 'Failed'
                     order.save()
                     return redirect('view_cart')
+
                 payment_key = payment_key_response.json()['token']
                 print(f"Payment Key: {payment_key}")
 
@@ -272,13 +281,12 @@ def checkout(request):
                 order.save()
 
                 # رابط الدفع
-                payment_url = f'https://accept.paymob.com/api/acceptance/iframes/{914410}?payment_token={payment_key}'
+                payment_url = f'https://accept.paymob.com/api/acceptance/iframes/914410?payment_token={payment_key}'
                 print(f"Payment URL: {payment_url}")
 
                 # تفريغ السلة
                 cart.items.all().delete()
 
-                # توجيه لصفحة الدفع
                 return render(request, 'pages/payment.html', {
                     'payment_url': payment_url,
                     'order': order
@@ -298,6 +306,7 @@ def checkout(request):
             return redirect('order_confirmation', order_id=order.id)
 
     return render(request, 'pages/checkout.html', {'cart_items': cart_items, 'total': total})
+
 
 
 
