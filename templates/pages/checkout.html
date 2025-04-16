@@ -1,98 +1,202 @@
 {% extends 'base.html' %}
-{% block title %}إتمام الطلب{% endblock %}
+
+{% block title %}إتمام الشراء{% endblock %}
 
 {% block content %}
-<style>
-    .checkout-section {
-        max-width: 800px;
-        margin: 50px auto;
-        background: #fff;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    .checkout-section h2 {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #1e272e;
-    }
-
-    .checkout-section table {
-        width: 100%;
-        margin-bottom: 20px;
-        border-collapse: collapse;
-    }
-
-    .checkout-section th, .checkout-section td {
-        padding: 10px;
-        text-align: center;
-        border-bottom: 1px solid #ccc;
-    }
-
-    .checkout-section label {
-        display: block;
-        margin: 15px 0 5px;
-        font-weight: bold;
-    }
-
-    .checkout-section button {
-        background: linear-gradient(90deg, #00b894, #00cec9);
-        color: white;
-        padding: 12px 25px;
-        border: none;
-        border-radius: 25px;
-        font-size: 1.1rem;
-        cursor: pointer;
-        display: block;
-        margin: 30px auto 0;
-        transition: 0.3s;
-    }
-
-    .checkout-section button:hover {
-        transform: scale(1.05);
-    }
-</style>
-
 <section class="checkout-section">
-    <h2>مراجعة الطلب</h2>
+    <h2>إتمام الشراء</h2>
+    
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <p class="message {{ message.tags }}">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
 
     {% if cart_items %}
-        <table>
-            <thead>
-                <tr>
-                    <th>المنتج</th>
-                    <th>الكمية</th>
-                    <th>الحجم</th>
-                    <th>السعر</th>
-                    <th>الإجمالي</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in cart_items %}
-                <tr>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>{{ item.size }}</td>
-                    <td>{{ item.product.price }} جنيه</td>
-                    <td>{{ item.get_total_price }} جنيه</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="cart-summary">
+            <h3>ملخص الطلب</h3>
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>الصورة</th>
+                        <th>المقاس</th>
+                        <th>السعر</th>
+                        <th>الكمية</th>
+                        <th>الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in cart_items %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td><img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" style="width: 50px; height: 50px;"></td>
+                        <td>{{ item.size }}</td>
+                        <td>{{ item.product.price }} جنيه</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.get_total_price }} جنيه</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="total">الإجمالي: {{ total }} جنيه</p>
+        </div>
 
-        <h3 style="text-align: right;">الإجمالي الكلي: {{ total }} جنيه</h3>
-
-        <form method="post" action="{% url 'checkout' %}">
+        <form method="POST" class="checkout-form">
             {% csrf_token %}
-            <label>اختر طريقة الدفع:</label>
-            <label><input type="radio" name="payment_method" value="cash" checked> الدفع عند الاستلام</label>
-            <label><input type="radio" name="payment_method" value="online"> دفع إلكتروني</label>
-
-            <button type="submit">إتمام الطلب</button>
+            <h3>بيانات الدفع</h3>
+            <div class="form-group">
+                <label for="phone_number">رقم الهاتف <span class="required">*</span></label>
+                <input type="text" id="phone_number" name="phone_number" placeholder="مثال: 0123456789"  required>
+            </div>
+            <div class="form-group">
+                <label for="last_name">اسم<span class="required">*</span></label>
+                <input type="text" id="last_name" name="last_name" placeholder="اسم "  required>
+            </div>
+            <div class="form-group">
+                <label for="payment_method">طريقة الدفع <span class="required">*</span></label>
+                <select id="payment_method" name="payment_method" required>
+                    <option value="cash">الدفع عند الاستلام</option>
+                    <option value="online">دفع إلكتروني</option>
+                </select>
+            </div>
+            <button type="submit" class="submit-btn">إتمام الشراء</button>
         </form>
     {% else %}
-        <p>السلة فارغة. <a href="{% url 'products' %}">العودة للتسوق</a></p>
+        <p>سلة التسوق فارغة. <a href="{% url 'products' %}">تسوّق الآن</a></p>
     {% endif %}
 </section>
+
+<style>
+.checkout-section {
+    max-width: 900px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.checkout-section h2 {
+    color: #1e272e;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.checkout-section h3 {
+    color: #1e272e;
+    margin: 20px 0 10px;
+}
+
+.cart-summary {
+    margin-bottom: 30px;
+}
+
+.cart-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.cart-table th, .cart-table td {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+.cart-table th {
+    background: #f8f9fa;
+    color: #1e272e;
+}
+
+.total {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: right;
+    color: #1e272e;
+}
+
+.checkout-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 1rem;
+    color: #1e272e;
+    margin-bottom: 5px;
+}
+
+.form-group .required {
+    color: #e74c3c;
+}
+
+.form-group input, .form-group select {
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus, .form-group select:focus {
+    border-color: #00b894;
+}
+
+.submit-btn {
+    background: linear-gradient(90deg, #00b894, #00cec9);
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: transform 0.3s;
+    align-self: center;
+}
+
+.submit-btn:hover {
+    transform: scale(1.05);
+}
+
+.messages {
+    margin-bottom: 20px;
+}
+
+.message {
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.message.error {
+    background: #e74c3c;
+    color: white;
+}
+
+@media (max-width: 600px) {
+    .cart-table th, .cart-table td {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+
+    .checkout-section {
+        margin: 20px;
+        padding: 15px;
+    }
+
+    .submit-btn {
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}

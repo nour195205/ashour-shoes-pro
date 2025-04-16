@@ -3,7 +3,6 @@
 {% block title %}تأكيد الطلب{% endblock %}
 
 {% block content %}
-
 <section class="confirmation-section">
     <h2>تم إتمام الطلب بنجاح!</h2>
     <p>شكرًا لتسوقك مع Ashour Shoes! تم استلام طلبك بنجاح.</p>
@@ -11,6 +10,10 @@
         <h3>طلب رقم: {{ order.id }}</h3>
         <p>التاريخ: {{ order.created_at }}</p>
         <p>الحالة: {{ order.status }}</p>
+        <p>حالة الدفع: {{ order.payment_status }}</p>
+        {% if order.transaction_id %}
+        <p>رقم المعاملة: {{ order.transaction_id }}</p>
+        {% endif %}
         <table class="order-table">
             <thead>
                 <tr>
@@ -41,41 +44,34 @@
     <a href="{% url 'products' %}"><button>متابعة التسوق</button></a>
 </section>
 
-<!-- إضافة مكتبة EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script>
-    // تهيئة EmailJS بالـ Public Key
     (function(){
-        emailjs.init("YxSLaNpb8bmFR-uoS"); // الـ Public Key
+        emailjs.init("YxSLaNpb8bmFR-uoS");
     })();
 
-    // بيانات الطلب من الـ View
-    const orderData = JSON.parse('{{ order_data_json|escapejs }}');
+    const paymentOrderData = JSON.parse('{{ order_data_json|escapejs }}');
 
-    // إرسال الإيميل لصاحب المحل باستخدام EmailJS
     window.onload = function() {
         const templateParams = {
-            to_email: 'ashournour36@gmail.com', // الإيميل بتاعك
-            user_name: orderData.user_name,
-            user_email: orderData.user_email,
-            order_id: orderData.order_id,
-            order_date: orderData.order_date,
-            order_status: orderData.order_status,
-            order_total: orderData.order_total,
-            order_items: orderData.order_items,
-            
-
+            to_email: 'ashournour36@gmail.com',
+            user_name: paymentOrderData.user_name,
+            user_email: paymentOrderData.user_email,
+            order_id: paymentOrderData.order_id,
+            order_date: paymentOrderData.order_date,
+            order_status: paymentOrderData.order_status,
+            order_total: paymentOrderData.order_total,
+            order_items: paymentOrderData.order_items,
+            payment_status: paymentOrderData.payment_status,
+            transaction_id: paymentOrderData.transaction_id
         };
-        console.log(templateParams);
 
         emailjs.send('service_ql09hke', 'template_qqes07k', templateParams)
-    .then(function(response) {
-        console.log('تم إرسال الإيميل بنجاح!', response.status, response.text);
-    })
-    .catch(function(error) { // استخدم catch لالتقاط الأخطاء
-        console.log('فشل في إرسال الإيميل:', error);
-    });
-
+            .then(function(response) {
+                console.log('تم إرسال الإيميل بنجاح!', response.status, response.text);
+            }, function(error) {
+                console.log('فشل في إرسال الإيميل:', error);
+            });
     };
 </script>
 {% endblock %}

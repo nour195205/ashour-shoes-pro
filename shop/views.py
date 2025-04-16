@@ -112,57 +112,40 @@ def view_cart(request):
         'total_price': total_price
     })
 
+
 # @login_required
 # def checkout(request):
-#     cart, created = Cart.objects.get_or_create(user=request.user)
+#     cart = get_object_or_404(Cart, user=request.user)
 #     cart_items = cart.items.all()
+#     total = sum(item.get_total_price() for item in cart_items)
 
-#     if not cart_items:
-#         messages.error(request, 'السلة فارغة. لا يمكن إتمام الشراء.')
-#         return redirect('view_cart')
+#     if request.method == 'POST':
+#         payment_method = request.POST.get('payment_method', 'cash')
 
-#     total_price = sum(item.get_total_price() for item in cart_items)
-#     order = Order.objects.create(
-#         user=request.user,
-#         total_price=total_price,
-#         status='Pending'
-#     )
-
-#     for item in cart_items:
-#         OrderItem.objects.create(
-#             order=order,
-#             product=item.product,
-#             quantity=item.quantity,
-#             size=item.size,
-#             price=item.product.price
+#         order = Order.objects.create(
+#             user=request.user,
+#             total_price=total,
+#             payment_method=payment_method
 #         )
 
-#     # تحضير بيانات الطلب للإرسال بالإيميل
-#     items_text = "\n".join([
-#         f"- {item.product.name} (المقاس: {item.size}) - الكمية: {item.quantity} - السعر: {float(item.price)} جنيه"
-#         for item in order.items.all()
-#     ])
-#     order_data = {
-#         'order_id': order.id,
-#         'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-#         'order_status': order.status,
-#         'order_total': float(order.total_price),  # تحويل Decimal إلى float
-#         'order_items': items_text,
-#         'user_name': request.user.username,
-#         'user_email': request.user.email,
-#     }
+#         for item in cart_items:
+#             OrderItem.objects.create(
+#                 order=order,
+#                 product=item.product,
+#                 quantity=item.quantity,
+#                 size=item.size,
+#                 price=item.product.price
+#             )
 
-#     # تحويل order_data إلى JSON string
-#     order_data_json = json.dumps(order_data)
+#         cart.items.all().delete()
 
-#     # تفريغ السلة بعد إتمام الشراء
-#     cart.items.all().delete()
+#         return redirect('orders')  # أو صفحة "تم الطلب بنجاح"
 
-#     # توجيه المستخدم لصفحة التأكيد مع بيانات الطلب
-#     return render(request, 'pages/order_confirmation.html', {
-#         'order': order,
-#         'order_data_json': order_data_json  # نمرر order_data كـ JSON string
-#     })
+#     return render(request, 'pages/checkout.html', {'cart_items': cart_items, 'total': total})
+
+
+import requests
+from django.conf import settings
 
 
 @login_required
@@ -171,13 +154,20 @@ def checkout(request):
     cart_items = cart.items.all()
     total = sum(item.get_total_price() for item in cart_items)
 
+    if not cart_items:
+        messages.error(request, 'السلة فارغة. لا يمكن إتمام الشراء.')
+        return redirect('view_cart')
+
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method', 'cash')
+        phone_number = request.POST.get('phone_number', '0123456789')
+        last_name = request.POST.get('last_name', 'Customer')
 
         order = Order.objects.create(
             user=request.user,
             total_price=total,
-            payment_method=payment_method
+            payment_method=payment_method,
+            payment_status='Pending'
         )
 
         for item in cart_items:
@@ -189,12 +179,171 @@ def checkout(request):
                 price=item.product.price
             )
 
-        cart.items.all().delete()
+        if payment_method == 'online':
+            try:
+                print(f"Starting Paymob payment for order {order.id}")
+                print(f"User: {request.user.username}, Email: {request.user.email}, Total: {total}")
 
-        return redirect('orders')  # أو صفحة "تم الطلب بنجاح"
+                # الخطوة 1: الحصول على توكن التوثيق
+                auth_response = requests.post(
+                    'https://accept.paymob.com/api/auth/tokens',
+                    json={'api_key': settings.PAYMOB_API_KEY}
+                )
+                if auth_response.status_code not in [200, 201]:
+                    error_msg = f"فشل التوثيق: {auth_response.status_code} - {auth_response.text}"
+                    print(error_msg)
+                    messages.error(request, error_msg)
+                    order.payment_status = 'Failed'
+                    order.save()
+                    return redirect('view_cart')
+                token = auth_response.json()['token']
+                print(f"Auth Token: {token}")
+
+                # الخطوة 2: إنشاء طلب Paymob
+                order_data = {
+                    'auth_token': token,
+                    'delivery_needed': False,
+                    'amount_cents': int(total * 100),
+                    'currency': 'EGP',
+                    'merchant_order_id': str(order.id),
+                    'items': [
+                        {
+                            'name': item.product.name[:60].encode('utf-8').decode('utf-8', 'ignore'),
+                            'amount_cents': int(item.product.price * 100),
+                            'description': f'Size: {item.size}',
+                            'quantity': item.quantity
+                        } for item in cart_items
+                    ]
+                }
+                print(f"Order Data: {order_data}")
+                order_response = requests.post(
+                    'https://accept.paymob.com/api/ecommerce/orders',
+                    json=order_data
+                )
+                if order_response.status_code != 201:
+                    error_msg = f"فشل إنشاء الطلب: {order_response.status_code} - {order_response.text}"
+                    print(error_msg)
+                    messages.error(request, error_msg)
+                    order.payment_status = 'Failed'
+                    order.save()
+                    return redirect('view_cart')
+                paymob_order_id = order_response.json()['id']
+                print(f"Paymob Order ID: {paymob_order_id}")
+
+                # الخطوة 3: إنشاء مفتاح الدفع
+                payment_key_data = {
+                    'auth_token': token,
+                    'amount_cents': int(total * 100),
+                    'expiration': 3600,
+                    'order_id': paymob_order_id,
+                    'billing_data': {
+                        'email': request.user.email or 'test@example.com',
+                        'first_name': request.user.username[:60].encode('utf-8').decode('utf-8', 'ignore') or 'User',
+                        'last_name': last_name,
+                        'phone_number': phone_number,
+                        'street': 'NA',
+                        'building': 'NA',
+                        'floor': 'NA',
+                        'apartment': 'NA',
+                        'city': 'Cairo',
+                        'country': 'EG',
+                        'state': 'NA'
+                    },
+                    'currency': 'EGP',
+                    'integration_id': settings.PAYMOB_INTEGRATION_ID
+                }
+                print(f"Payment Key Data: {payment_key_data}")
+                payment_key_response = requests.post(
+                    'https://accept.paymob.com/api/acceptance/payment_keys',
+                    json=payment_key_data
+                )
+                if payment_key_response.status_code not in [200, 201]:  # نقبل 200 أو 201
+                    error_msg = f"فشل إنشاء مفتاح الدفع: {payment_key_response.status_code} - {payment_key_response.text}"
+                    print(error_msg)
+                    messages.error(request, error_msg)
+                    order.payment_status = 'Failed'
+                    order.save()
+                    return redirect('view_cart')
+                payment_key = payment_key_response.json()['token']
+                print(f"Payment Key: {payment_key}")
+
+                # حفظ رقم المعاملة
+                order.transaction_id = paymob_order_id
+                order.save()
+
+                # رابط الدفع
+                payment_url = f'https://accept.paymob.com/api/acceptance/iframes/{914410}?payment_token={payment_key}'
+                print(f"Payment URL: {payment_url}")
+
+                # تفريغ السلة
+                cart.items.all().delete()
+
+                # توجيه لصفحة الدفع
+                return render(request, 'pages/payment.html', {
+                    'payment_url': payment_url,
+                    'order': order
+                })
+
+            except Exception as e:
+                error_msg = f"خطأ عام في الدفع: {str(e)}"
+                print(error_msg)
+                messages.error(request, error_msg)
+                order.payment_status = 'Failed'
+                order.save()
+                return redirect('view_cart')
+
+        else:
+            # الدفع عند الاستلام
+            cart.items.all().delete()
+            return redirect('order_confirmation', order_id=order.id)
 
     return render(request, 'pages/checkout.html', {'cart_items': cart_items, 'total': total})
 
+
+
+from django.http import HttpResponse
+@login_required
+def order_confirmation(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    items_text = "\n".join([
+        f"- {item.product.name} (المقاس: {item.size}) - الكمية: {item.quantity} - السعر: {float(item.price)} جنيه"
+        for item in order.items.all()
+    ])
+    payment_order_data = {
+        'order_id': order.id,
+        'order_date': order.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'order_status': order.status,
+        'order_total': float(order.total_price),
+        'order_items': items_text,
+        'user_name': request.user.username,
+        'user_email': request.user.email,
+        'payment_status': order.payment_status,
+        'transaction_id': order.transaction_id or ''
+    }
+    payment_order_data_json = json.dumps(payment_order_data)
+    return render(request, 'pages/order_confirmation.html', {
+        'order': order,
+        'order_data_json': payment_order_data_json
+    })
+
+def paymob_callback(request):
+    if request.method == 'POST':
+        data = request.POST
+        transaction_id = data.get('obj[order][id]')
+        success = data.get('obj[success]')
+        order = Order.objects.filter(transaction_id=transaction_id).first()
+
+        if order:
+            if success == 'true':
+                order.payment_status = 'Paid'
+                order.status = 'Confirmed'
+            else:
+                order.payment_status = 'Failed'
+                order.status = 'Cancelled'
+            order.save()
+
+        return HttpResponse(status=200)
+    return HttpResponse(status=400)
 
 
 @login_required
@@ -426,3 +575,7 @@ def remove_from_cart(request, cart_item_id):
         return JsonResponse({'success': True, 'message': 'تم إزالة العنصر من العربة!'})
     except CartItem.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'العنصر غير موجود في العربة.'})
+
+
+
+
